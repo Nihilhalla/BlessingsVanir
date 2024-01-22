@@ -1,0 +1,14 @@
+{
+    "eldervanir_effectname" : "Blessing of the Vanir, Elder",
+	"eldervanir_effectstart" : "The Vanir have seen the death of The Elder",
+	"eldervanir_effectstop" : "The Vanir have stopped respecting The Elder",
+	"bonemassvanir_effectname" : "Blessing of the Vanir, Bonemass",
+	"bonemassvanir_effectstart" : "The Vanir have seen the death of Bonemass",
+	"bonemassvanir_effectstop" : "The Vanir have stopped respecting Bonemass",
+	"modervanir_effectname" : "Blessing of the Vanir, Moder",
+	"modervanir_effectstart" : "The Vanir have seen the death of Moder",
+	"modervanir_effectstop" : "The Vanir have stopped respecting Moder",
+	"yagluthvanir_effectname" : "Blessing of the Vanir, Yagluth",
+	"yagluthvanir_effectstart": "The Vanir have seen the death of Yagluth",
+	"yagluthvanir_effectstop" : "The Vanir have stopped respecting Yagluth"
+}
