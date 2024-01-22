@@ -373,3 +373,8 @@ Environment.props
 
 # not the generated dll for thunderstore
 */Package/plugins/*
+RenameSolution.ps1
+publish.ps1
+publish_debug.sh
+publish_release.sh
+rename.sh
