@@ -30,7 +30,7 @@ namespace BlessingsVanir
     {
         public const string PluginGUID = "com.jotunn.BlessingsVanir";
         public const string PluginName = "BlessingsVanir";
-        public const string PluginVersion = "1.4.0";
+        public const string PluginVersion = "1.3.2";
         private readonly Harmony harmony = new Harmony("test.BlessingsVanir");
 
         public static List<string> elderBlessedTeleportable = new List<string>();
@@ -42,14 +42,12 @@ namespace BlessingsVanir
         private static CustomStatusEffect VanirBonemassBlessing;
         private static CustomStatusEffect VanirModerBlessing;
         private static CustomStatusEffect VanirYagluthBlessing;
-        private static CustomStatusEffect VanirEliteBlessing;
 
         private static ConfigFile serverConfig = new ConfigFile(Path.Combine(BepInEx.Paths.ConfigPath, "BlessingsVanir.cfg"), true);
         private static ConfigEntry<float> ElderDuration;
         private static ConfigEntry<float> BonemassDuration;
         private static ConfigEntry<float> ModerDuration;
         private static ConfigEntry<float> YagluthDuration;
-        private static ConfigEntry<float> EliteDuration;
 
         private static BlessingsVanir instance;
 
@@ -102,9 +100,6 @@ namespace BlessingsVanir
                 {"eldervanir_effectname", "Blessing of the Vanir, Elder"},
                 {"eldervanir_effectstart", "The Vanir have seen the death of The Elder"},
                 {"eldervanir_effectstop", "The Vanir have stopped respecting The Elder"},
-                {"elitevanir_effectname", "Blessing of the Vanir, Elite"},
-                {"elitevanir_effectstart", "The Vanir recognize your strength and grant you more"},
-                {"elitevanir_effectstop", "The Vanir have stopped recognizing your strength"},
                 {"bonemassvanir_effectname", "Blessing of the Vanir, Bonemass"},
                 {"bonemassvanir_effectstart", "The Vanir have seen the death of Bonemass"},
                 {"bonemassvanir_effectstop", "The Vanir have stopped respecting Bonemass"},
@@ -138,10 +133,6 @@ namespace BlessingsVanir
         {
             VanirYagluthBlessing.StatusEffect.m_ttl = YagluthDuration.Value;
         }
-        private static void UpdateEliteDuration(object obj, EventArgs args)
-        {
-            VanirEliteBlessing.StatusEffect.m_ttl = EliteDuration.Value;
-        }
         private void AddStatusEffects()
         {
             Sprite iconSprite = AssetUtils.LoadSpriteFromFile("BlessingsVanir/Assets/vanirbuff.png");
@@ -157,7 +148,6 @@ namespace BlessingsVanir
             AddBonemassVanirBuff();
             AddModerVanirBuff();
             AddYagluthVanirBuff();
-            AddEliteVanirBuff();
         }
         private void AddConfigValues()
         {
@@ -183,39 +173,9 @@ namespace BlessingsVanir
                     new AcceptableValueRange<float>(30f, 2400f), isAdminOnly));
             YagluthDuration.SettingChanged += UpdateYagluthDuration;
 
-            EliteDuration = serverConfig.Bind("Server config", "EliteDuration", 15f,
-                new ConfigDescription("Server side float controlling the slain 1+ Star slain Buff Duration, Time in Seconds",
-                    new AcceptableValueRange<float>(5f, 120f), isAdminOnly));
-            EliteDuration.SettingChanged += UpdateEliteDuration;
-
 
         }
 
-        private void AddEliteVanirBuff()
-        {
-            float readEliteValue = EliteDuration.Value;
-            SE_Stats VanirBlessedElite = ScriptableObject.CreateInstance<SE_Stats>();
-            VanirBlessedElite.name = "VanirElite";
-            VanirBlessedElite.m_name = "$elitevanir_effectname";
-            VanirBlessedElite.m_startMessage = "$elitevanir_effectstart";
-            VanirBlessedElite.m_stopMessage = "$elitevanir_effectstop";
-            VanirBlessedElite.m_startMessageType = MessageHud.MessageType.Center;
-            VanirBlessedElite.m_stopMessageType = MessageHud.MessageType.Center;
-            VanirBlessedElite.m_icon = AssetUtils.LoadSpriteFromFile("BlessingsVanir/Assets/vanirelitebuff.png");
-            VanirBlessedElite.m_ttl = readEliteValue;
-
-            VanirBlessedElite.m_staminaRegenMultiplier = 1.5f;
-            VanirBlessedElite.m_healthOverTime = 50f;
-            VanirBlessedElite.m_healthOverTimeDuration = 15f;
-            VanirBlessedElite.m_healthOverTimeInterval = 1f;
-            VanirBlessedElite.m_healthOverTimeTickHP = 1f;
-
-            VanirEliteBlessing = new CustomStatusEffect(VanirBlessedElite, fixReference: false);
-            ItemManager.Instance.AddStatusEffect(VanirEliteBlessing);
-
-            
-
-        }
 
         private void AddElderVanirBuff()
         {
@@ -328,10 +288,6 @@ namespace BlessingsVanir
                 {
                     player.GetSEMan().AddStatusEffect(VanirYagluthBlessing.GetHashCode());
                 }
-                if (str.Equals("elite"))
-                {
-                    player.GetSEMan().AddStatusEffect(VanirEliteBlessing.GetHashCode());
-                }
             }
         }
         public static void SyncTeleportability(string effectName, List<string> toTeleport)
@@ -384,10 +340,6 @@ namespace BlessingsVanir
                 if (__instance.m_name.Equals("$enemy_goblinking"))
                 {
                     instance.StartCoroutine(DelayedStatusEffect("yagluth"));
-                }
-                if (__instance.m_level >= 2 && __instance.m_tamed.Equals(false) && UnityEngine.Random.Range(1, 7).Equals(6))
-                {
-                    instance.StartCoroutine(DelayedStatusEffect("elite"));
                 }
             }
         }
