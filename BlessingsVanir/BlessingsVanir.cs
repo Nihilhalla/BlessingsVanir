@@ -30,7 +30,7 @@ namespace BlessingsVanir
     {
         public const string PluginGUID = "com.jotunn.BlessingsVanir";
         public const string PluginName = "BlessingsVanir";
-        public const string PluginVersion = "1.3.2";
+        public const string PluginVersion = "1.3.3";
         private readonly Harmony harmony = new Harmony("test.BlessingsVanir");
 
         public static List<string> elderBlessedTeleportable = new List<string>();
@@ -223,7 +223,7 @@ namespace BlessingsVanir
             ItemManager.Instance.AddStatusEffect(VanirBonemassBlessing);
 
             bonemassBlessedTeleportable.Add("$item_iron");
-            bonemassBlessedTeleportable.Add("$item_ironscraps");
+            bonemassBlessedTeleportable.Add("$item_ironscrap");
         }
 
         private void AddModerVanirBuff()
