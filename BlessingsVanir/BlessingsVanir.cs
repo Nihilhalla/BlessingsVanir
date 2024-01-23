@@ -30,7 +30,7 @@ namespace BlessingsVanir
     {
         public const string PluginGUID = "com.jotunn.BlessingsVanir";
         public const string PluginName = "BlessingsVanir";
-        public const string PluginVersion = "1.4.0";
+        public const string PluginVersion = "1.4.1";
         private readonly Harmony harmony = new Harmony("test.BlessingsVanir");
 
         public static List<string> elderBlessedTeleportable = new List<string>();
@@ -385,7 +385,7 @@ namespace BlessingsVanir
                 {
                     instance.StartCoroutine(DelayedStatusEffect("yagluth"));
                 }
-                if (__instance.m_level >= 2 && __instance.m_tamed.Equals(false) && UnityEngine.Random.Range(1, 7).Equals(6))
+                if (__instance.m_level == 2 && __instance.m_tamed.Equals(false) && UnityEngine.Random.Range(1, 7).Equals(6) || __instance.m_level == 3 && __instance.m_tamed.Equals(false))
                 {
                     instance.StartCoroutine(DelayedStatusEffect("elite"));
                 }
