@@ -28,10 +28,10 @@ namespace BlessingsVanir
     //[NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod, VersionStrictness.Minor)]
     internal class BlessingsVanir : BaseUnityPlugin
     {
-        public const string PluginGUID = "com.jotunn.BlessingsVanir";
+        public const string PluginGUID = "nihilhalla.mods.BlessingsVanir";
         public const string PluginName = "BlessingsVanir";
-        public const string PluginVersion = "1.3.3";
-        private readonly Harmony harmony = new Harmony("test.BlessingsVanir");
+        public const string PluginVersion = "1.3.4";
+        private readonly Harmony harmony = new Harmony("Harmony.BlessingsVanir");
 
         public static List<string> elderBlessedTeleportable = new List<string>();
         public static List<string> bonemassBlessedTeleportable = new List<string>();
@@ -48,6 +48,8 @@ namespace BlessingsVanir
         private static ConfigEntry<float> BonemassDuration;
         private static ConfigEntry<float> ModerDuration;
         private static ConfigEntry<float> YagluthDuration;
+
+        private static Sprite iconBuff = AssetUtils.LoadSpriteFromFile("Assets/Resources/vanirbuff.png");
 
         private static BlessingsVanir instance;
 
@@ -135,8 +137,7 @@ namespace BlessingsVanir
         }
         private void AddStatusEffects()
         {
-            Sprite iconSprite = AssetUtils.LoadSpriteFromFile("BlessingsVanir/Assets/vanirbuff.png");
-            if (iconSprite != null)
+            if (iconBuff != null)
             {
                 Logger.LogInfo("Found the Sprite for VanirBuff");
             }
@@ -189,7 +190,7 @@ namespace BlessingsVanir
             VanirBlessedElder.m_stopMessage = "$eldervanir_effectstop";
             VanirBlessedElder.m_startMessageType = MessageHud.MessageType.Center;
             VanirBlessedElder.m_stopMessageType = MessageHud.MessageType.Center;
-            VanirBlessedElder.m_icon = AssetUtils.LoadSpriteFromFile("BlessingsVanir/Assets/vanirbuff.png");
+            VanirBlessedElder.m_icon = iconBuff;
             VanirBlessedElder.m_ttl = readElderValue;
 
 
@@ -216,7 +217,7 @@ namespace BlessingsVanir
             VanirBlessedBonemass.m_stopMessage = "$bonemassvanir_effectstop";
             VanirBlessedBonemass.m_startMessageType = MessageHud.MessageType.Center;
             VanirBlessedBonemass.m_stopMessageType = MessageHud.MessageType.Center;
-            VanirBlessedBonemass.m_icon = AssetUtils.LoadSpriteFromFile("BlessingsVanir/Assets/vanirbuff.png");
+            VanirBlessedBonemass.m_icon = iconBuff;
             VanirBlessedBonemass.m_ttl = readBonemassValue;
 
             VanirBonemassBlessing = new CustomStatusEffect(VanirBlessedBonemass, fixReference: false);  // We dont need to fix refs here, because no mocks were used
@@ -237,7 +238,7 @@ namespace BlessingsVanir
             VanirBlessedModer.m_stopMessage = "$modervanir_effectstop";
             VanirBlessedModer.m_startMessageType = MessageHud.MessageType.Center;
             VanirBlessedModer.m_stopMessageType = MessageHud.MessageType.Center;
-            VanirBlessedModer.m_icon = AssetUtils.LoadSpriteFromFile("BlessingsVanir/Assets/vanirbuff.png");
+            VanirBlessedModer.m_icon = iconBuff;
             VanirBlessedModer.m_ttl = readModerValue;
 
             VanirModerBlessing = new CustomStatusEffect(VanirBlessedModer, fixReference: false);  // We dont need to fix refs here, because no mocks were used
@@ -258,7 +259,7 @@ namespace BlessingsVanir
             VanirBlessedYagluth.m_stopMessage = "$yagluthvanir_effectstop";
             VanirBlessedYagluth.m_startMessageType = MessageHud.MessageType.Center;
             VanirBlessedYagluth.m_stopMessageType = MessageHud.MessageType.Center;
-            VanirBlessedYagluth.m_icon = AssetUtils.LoadSpriteFromFile("BlessingsVanir/Assets/vanirbuff.png");
+            VanirBlessedYagluth.m_icon = iconBuff;
             VanirBlessedYagluth.m_ttl = readYagluthValue;
 
             VanirYagluthBlessing = new CustomStatusEffect(VanirBlessedYagluth, fixReference: false);  // We dont need to fix refs here, because no mocks were used
