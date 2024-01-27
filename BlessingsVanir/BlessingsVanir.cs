@@ -40,6 +40,7 @@ namespace BlessingsVanir
         public static List<string> bonemassBlessedTeleportable = new List<string>();
         public static List<string> moderBlessedTeleportable = new List<string>();
         public static List<string> yagluthBlessedTeleportable = new List<string>();
+        public static List<string> powerfulCreatures = new List<string>();
 
         private static CustomStatusEffect VanirElderBlessing;
         private static CustomStatusEffect VanirBonemassBlessing;
@@ -57,11 +58,10 @@ namespace BlessingsVanir
         private static ConfigEntry<float> YagluthDuration;
         private static ConfigEntry<float> EliteDuration;
         private static ConfigEntry<float> MinibossDuration;
-        private static ConfigEntry<float> AbominationDuration;
-        private static ConfigEntry<float> VanirMinibossStaminaCostReduction;
+        //private static ConfigEntry<float> VanirMinibossStaminaCostReduction;
         private static ConfigEntry<float> VanirEliteStaminaRegen;
         private static ConfigEntry<float> VanirEliteHealthRegen;
-        private static ConfigEntry<float> VanirAbominationDamageReduce;
+        private static ConfigEntry<float> VanirWeightBuffAmount;
 
         private static Sprite iconBuff;
         private static Sprite iconEliteBuff;
@@ -95,6 +95,7 @@ namespace BlessingsVanir
             {
                 Destroy(gameObject);
             }
+            BuildCreatureList();
             ConfigSetup();
             AddStatusEffects();
             /*if (PluginInstalled("randyknapp.mods.epicloot"))
@@ -126,8 +127,8 @@ namespace BlessingsVanir
         private void LoadAssets()
         {
             string modPath = Path.GetDirectoryName(Info.Location);
-            Sprite iconBuff = AssetUtils.LoadSpriteFromFile(Path.Combine(modPath, "Assets/Resources/vanirbuff.png"));
-            Sprite iconEliteBuff = AssetUtils.LoadSpriteFromFile(Path.Combine(modPath, "Assets/Resources/vanirelitebuff.png"));
+            iconBuff = AssetUtils.LoadSpriteFromFile(Path.Combine(modPath, "Assets/Resources/vanirbuff.png"));
+            iconEliteBuff = AssetUtils.LoadSpriteFromFile(Path.Combine(modPath, "Assets/Resources/vanirelitebuff.png"));
         }
         private void ConfigSetup()
         {
@@ -145,7 +146,7 @@ namespace BlessingsVanir
             VanirEliteBlessing.m_healthOverTime = VanirEliteHealthRegen.Value;
             VanirEliteBlessing.m_ttl = EliteDuration.Value;
             VanirMinibossBlessing.StatusEffect.m_ttl = MinibossDuration.Value;
-            VanirAbominationBlessing.StatusEffect.m_ttl = AbominationDuration.Value;
+
         }
         private void AddStatusEffects()
         {
@@ -165,6 +166,15 @@ namespace BlessingsVanir
             AddMinibossVanirBuff();
             //AddAbominationVanirBuff();
 
+        }
+
+        private void BuildCreatureList()
+        {
+            powerfulCreatures.Add("$enemy_troll");
+            powerfulCreatures.Add("$enemy_abomination");
+            powerfulCreatures.Add("$enemy_stonegolem");
+            powerfulCreatures.Add("$enemy_goblinbrute");
+            powerfulCreatures.Add("$enemy_gjall");
         }
         private void AddConfigValues()
         {
@@ -212,12 +222,17 @@ namespace BlessingsVanir
             VanirTrollStaminaCostReduction.SettingChanged += UpdateConfigs;
             */
             VanirEliteStaminaRegen = serverConfig.Bind("Buff tweaks", "VanirEliteStaminaRegen", 1.5f,
-                new ConfigDescription("Server side float, multiplier for stamina regen during elite slain buff", new AcceptableValueRange<float>(1f, 5f), isAdminOnly));
+                new ConfigDescription("Server side float, multiplier for stamina regen during elite slain buff **Requires Restart**", new AcceptableValueRange<float>(1f, 5f), isAdminOnly));
             VanirEliteStaminaRegen.SettingChanged += UpdateConfigs;
 
             VanirEliteHealthRegen = serverConfig.Bind("Buff tweaks", "VanirEliteHealthRegen", 50f,
-                new ConfigDescription("Server side float, multiplier for health regen during elite slain buff", new AcceptableValueRange<float>(1f, 500f), isAdminOnly));
+                new ConfigDescription("Server side float, multiplier for health regen during elite slain buff **Requires Restart**", new AcceptableValueRange<float>(1f, 500f), isAdminOnly));
             VanirEliteHealthRegen.SettingChanged += UpdateConfigs;
+
+            VanirWeightBuffAmount = serverConfig.Bind("Buff tweaks", "VanirWeightBuffAmount", 60f,
+                new ConfigDescription("Server side float, multiplier for health regen during elite slain buff **Requires Restart**", new AcceptableValueRange<float>(10f, 500f), isAdminOnly));
+            VanirWeightBuffAmount.SettingChanged += UpdateConfigs;
+
             /*
             VanirAbominationDamageReduce = serverConfig.Bind("Buff tweaks", "VanirAbominationDamageReduce", 0.5f,
                 new ConfigDescription("Server side float, multiplier for damage reduction during abomination slain buff", new AcceptableValueRange<float>(0.01f, 1f), isAdminOnly));
@@ -272,7 +287,7 @@ namespace BlessingsVanir
             VanirBlessedMiniboss.m_icon = iconEliteBuff;
             VanirBlessedMiniboss.m_ttl = readMinibossValue;
             
-            VanirBlessedMiniboss.m_addMaxCarryWeight = 30f;
+            VanirBlessedMiniboss.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
 
             VanirMinibossBlessing = new CustomStatusEffect(VanirBlessedMiniboss, fixReference: false);
             ItemManager.Instance.AddStatusEffect(VanirMinibossBlessing);
@@ -317,7 +332,7 @@ namespace BlessingsVanir
             VanirBlessedElder.m_ttl = readElderValue;
             VanirBlessedElder.m_tooltip = "$eldervanir_desc";
 
-            VanirBlessedElder.m_addMaxCarryWeight = 30f;
+            VanirBlessedElder.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
 
 
             VanirElderBlessing = new CustomStatusEffect(VanirBlessedElder, fixReference: false);  // We dont need to fix refs here, because no mocks were used
@@ -346,7 +361,7 @@ namespace BlessingsVanir
             VanirBlessedBonemass.m_icon = iconBuff;
             VanirBlessedBonemass.m_ttl = readBonemassValue;
 
-            VanirBlessedBonemass.m_addMaxCarryWeight = 30f;
+            VanirBlessedBonemass.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
 
 
             VanirBonemassBlessing = new CustomStatusEffect(VanirBlessedBonemass, fixReference: false);  // We dont need to fix refs here, because no mocks were used
@@ -371,7 +386,7 @@ namespace BlessingsVanir
             VanirBlessedModer.m_icon = iconBuff;
             VanirBlessedModer.m_ttl = readModerValue;
 
-            VanirBlessedModer.m_addMaxCarryWeight = 30f;
+            VanirBlessedModer.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
 
             VanirModerBlessing = new CustomStatusEffect(VanirBlessedModer, fixReference: false);  // We dont need to fix refs here, because no mocks were used
             ItemManager.Instance.AddStatusEffect(VanirModerBlessing);
@@ -395,7 +410,7 @@ namespace BlessingsVanir
             VanirBlessedYagluth.m_icon = iconBuff;
             VanirBlessedYagluth.m_ttl = readYagluthValue;
 
-            VanirBlessedYagluth.m_addMaxCarryWeight = 30f;
+            VanirBlessedYagluth.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
 
             VanirYagluthBlessing = new CustomStatusEffect(VanirBlessedYagluth, fixReference: false);  // We dont need to fix refs here, because no mocks were used
             ItemManager.Instance.AddStatusEffect(VanirYagluthBlessing);
@@ -549,7 +564,7 @@ namespace BlessingsVanir
                 {
                     instance.StartCoroutine(DelayedStatusEffect("elite"));
                 }
-                if (__instance.m_name.Equals("$enemy_troll") || __instance.m_name.Equals("$enemy_abomination"))
+                if (powerfulCreatures.Contains(__instance.m_name))
                 {
                     instance.StartCoroutine(DelayedStatusEffect("miniboss"));
                 }

@@ -10,10 +10,10 @@
 	"elitevanir_desc": "The Vanir grant you a brief respite for your strength",
 
 
-	"trollvanir_effectname": "Blessing of the Vanir, Troll",
-	"trollvanir_effectstart": "The Vanir recognize your strength",
-	"trollvanir_effectstop": "The Vanir have stopped recognizing your strength",
-	"trollvanir_desc": "The Vanir aid your swings, and lighten your burden",
+	"minibossvanir_effectname": "Blessing of the Vanir, Troll",
+	"minibossvanir_effectstart": "The Vanir recognize your strength",
+	"minibossvanir_effectstop": "The Vanir have stopped recognizing your strength",
+	"minibossvanir_desc": "The Vanir aid your swings, and lighten your burden",
 
 
 	"abominationvanir_effectname": "Blessing of the Vanir, Abomination",
