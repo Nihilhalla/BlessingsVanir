@@ -82,6 +82,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Configs\BaseConfig.cs" />
+    <Compile Include="HarmonyPatches\NoEpicLoot.cs" />
+    <Compile Include="HarmonyPatches\EpicLoot.cs" />
+    <Compile Include="ReflectiveHooks\Accessor.cs" />
     <Compile Include="Properties\IgnoreAccessModifiers.cs" />
     <Compile Include="BlessingsVanir.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

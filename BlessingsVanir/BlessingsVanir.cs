@@ -18,6 +18,9 @@ using System.Runtime.Serialization;
 using UnityEngine;
 using UnityEngine.TextCore;
 using UnityEngine.SceneManagement;
+using BlessingsVanir.Configs;
+using BlessingsVanir.HarmonyPatches;
+using BlessingsVanir.ReflectiveHooks;
 using static Humanoid;
 using static ItemDrop;
 using static ItemSets;
@@ -28,13 +31,14 @@ namespace BlessingsVanir
 {
     [BepInPlugin(PluginGUID, PluginName, PluginVersion)]
     [BepInDependency(Jotunn.Main.ModGuid)]
+    [BepInDependency("randyknapp.mods.epicloot", BepInDependency.DependencyFlags.SoftDependency)]
     //[NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod, VersionStrictness.Minor)]
     internal class BlessingsVanir : BaseUnityPlugin
     {
         public const string PluginGUID = "nihilhalla.mods.BlessingsVanir";
         public const string PluginName = "BlessingsVanir";
-        public const string PluginVersion = "1.4.2";
-        private readonly Harmony harmony = new Harmony("Harmony.BlessingsVanir");
+        public const string PluginVersion = "1.4.3";
+        private Harmony harmony;
 
         public static List<string> elderBlessedTeleportable = new List<string>();
         public static List<string> bonemassBlessedTeleportable = new List<string>();
@@ -42,49 +46,42 @@ namespace BlessingsVanir
         public static List<string> yagluthBlessedTeleportable = new List<string>();
         public static List<string> powerfulCreatures = new List<string>();
 
-        private static CustomStatusEffect VanirElderBlessing;
-        private static CustomStatusEffect VanirBonemassBlessing;
-        private static CustomStatusEffect VanirModerBlessing;
-        private static CustomStatusEffect VanirYagluthBlessing;
-        private static SE_Stats VanirEliteBlessing;
-        private static CustomStatusEffect VanirMinibossBlessing;
-        private static CustomStatusEffect VanirAbominationBlessing;
+        public static CustomStatusEffect VanirElderBlessing;
+        public static CustomStatusEffect VanirBonemassBlessing;
+        public static CustomStatusEffect VanirModerBlessing;
+        public static CustomStatusEffect VanirYagluthBlessing;
+        public static SE_Stats VanirEliteBlessing;
+        public static CustomStatusEffect VanirMinibossBlessing;
+        public static CustomStatusEffect VanirAbominationBlessing;
+        public static CustomStatusEffect VanirTrollBlessing;
+        public static CustomStatusEffect VanirGolemBlessing;
 
-        private static ConfigFile serverConfig = new ConfigFile(Path.Combine(BepInEx.Paths.ConfigPath, "BlessingsVanir.cfg"), true);
-
-        private static ConfigEntry<float> ElderDuration;
-        private static ConfigEntry<float> BonemassDuration;
-        private static ConfigEntry<float> ModerDuration;
-        private static ConfigEntry<float> YagluthDuration;
-        private static ConfigEntry<float> EliteDuration;
-        private static ConfigEntry<float> MinibossDuration;
-        //private static ConfigEntry<float> VanirMinibossStaminaCostReduction;
-        private static ConfigEntry<float> VanirEliteStaminaRegen;
-        private static ConfigEntry<float> VanirEliteHealthRegen;
-        private static ConfigEntry<float> VanirWeightBuffAmount;
+        public static BaseUnityPlugin epicLootInstance = null;
 
         private static Sprite iconBuff;
         private static Sprite iconEliteBuff;
 
-        private static BlessingsVanir instance;
+        public static BlessingsVanir instance;
 
         // Use this class to add your own localization to the game
         // https://valheim-modding.github.io/Jotunn/tutorials/localization.html
 
         //public Dictionary<string, string> defaultDict = Localization.instance.m_translations;
         public static CustomLocalization localization = LocalizationManager.Instance.GetLocalization();
-        public static bool PluginInstalled(string pluginGUID)
+        public static BaseUnityPlugin GetPluginInstance(string pluginGUID)
         {
             if (Chainloader.PluginInfos.TryGetValue(pluginGUID, out PluginInfo test))
             {
-                Jotunn.Logger.LogInfo("We found " + test + " was installed, modifying patches.");
-                return true;
+                BaseUnityPlugin pluginInstance = test.Instance;
+                //Jotunn.Logger.LogInfo("We found " + test + " was installed, modifying patches.");
+                return pluginInstance;
             }
-            return false;
+            return null;
         }
 
         private void Awake()
         {
+
             LoadAssets();
             if (instance == null)
             {
@@ -96,14 +93,23 @@ namespace BlessingsVanir
                 Destroy(gameObject);
             }
             BuildCreatureList();
-            ConfigSetup();
-            AddStatusEffects();
-            /*if (PluginInstalled("randyknapp.mods.epicloot"))
+
+            if (GetPluginInstance("randyknapp.mods.epicloot") != null)
             {
-                Jotunn.Logger.LogInfo("EpicLoot installed, changing status effect patches to avoid clobbering.");
-                //harmony.Patch(Character.OnDeath(), CharacterDeathPatch.Prefix, CharacterDeathPatch.Postfix);
-            }*/
-            harmony.PatchAll();
+                epicLootInstance = GetPluginInstance("randyknapp.mods.epicloot");
+                Jotunn.Logger.LogInfo("Epic Loot was found, adding reflective patches for status effects.");
+                ConfigSetup();
+                AddStatusEffects();
+                harmony = Harmony.CreateAndPatchAll(new EpicLoot().GetType(), PluginGUID);
+            }
+            else
+            {
+                epicLootInstance = null;
+                Jotunn.Logger.LogInfo("Epic Loot was NOT found, using original status effects");
+                ConfigSetup();
+                AddStatusEffects();
+                harmony = Harmony.CreateAndPatchAll(new NoEpicLoot().GetType(), PluginGUID);
+            }
 
 
 
@@ -132,21 +138,7 @@ namespace BlessingsVanir
         }
         private void ConfigSetup()
         {
-            AddConfigValues();
-            SynchronizationManager.Instance.RegisterCustomConfig(serverConfig);
-        }
-        private static void UpdateConfigs(object obj, EventArgs args)
-        {
-            VanirElderBlessing.StatusEffect.m_ttl = ElderDuration.Value;
-            VanirBonemassBlessing.StatusEffect.m_ttl = BonemassDuration.Value;
-            VanirModerBlessing.StatusEffect.m_ttl = ModerDuration.Value;
-            VanirYagluthBlessing.StatusEffect.m_ttl = YagluthDuration.Value;
-
-            VanirEliteBlessing.m_staminaRegenMultiplier = VanirEliteStaminaRegen.Value;
-            VanirEliteBlessing.m_healthOverTime = VanirEliteHealthRegen.Value;
-            VanirEliteBlessing.m_ttl = EliteDuration.Value;
-            VanirMinibossBlessing.StatusEffect.m_ttl = MinibossDuration.Value;
-
+            BaseConfig.InitializeConfigs();
         }
         private void AddStatusEffects()
         {
@@ -163,8 +155,17 @@ namespace BlessingsVanir
             AddModerVanirBuff();
             AddYagluthVanirBuff();
             AddEliteVanirBuff();
-            AddMinibossVanirBuff();
-            //AddAbominationVanirBuff();
+            if (epicLootInstance != null)
+            {
+                AddMinibossVanirBuff();
+            }
+            else
+            {
+                AddAbominationVanirBuff();
+                AddTrollVanirBuff();
+                AddGolemVanirBuff();
+            }
+
 
         }
 
@@ -176,72 +177,9 @@ namespace BlessingsVanir
             powerfulCreatures.Add("$enemy_goblinbrute");
             powerfulCreatures.Add("$enemy_gjall");
         }
-        private void AddConfigValues()
+        private void AddAbominationVanirBuff()
         {
-            ConfigurationManagerAttributes isAdminOnly = new ConfigurationManagerAttributes { IsAdminOnly = true };
-
-            ElderDuration = serverConfig.Bind("Server config", "ElderDuration", 300f,
-                new ConfigDescription("Server side float controlling the Elder Buff Duration, Time in Seconds",
-                    new AcceptableValueRange<float>(5f, 3600f), isAdminOnly));
-            ElderDuration.SettingChanged += UpdateConfigs;
-
-            BonemassDuration = serverConfig.Bind("Server config", "BonemassDuration", 300f,
-                new ConfigDescription("Server side float controlling the Bonemass Buff Duration, Time in Seconds",
-                    new AcceptableValueRange<float>(5f, 3600f), isAdminOnly));
-            BonemassDuration.SettingChanged += UpdateConfigs;
-
-            ModerDuration = serverConfig.Bind("Server config", "ModerDuration", 300f,
-                new ConfigDescription("Server side float controlling the Moder Buff Duration, Time in Seconds",
-                    new AcceptableValueRange<float>(5f, 3600f), isAdminOnly));
-            ModerDuration.SettingChanged += UpdateConfigs;
-
-            YagluthDuration = serverConfig.Bind("Server config", "YagluthDuration", 300f,
-                new ConfigDescription("Server side float controlling the Yagluth Buff Duration, Time in Seconds",
-                    new AcceptableValueRange<float>(5f, 3600f), isAdminOnly));
-            YagluthDuration.SettingChanged += UpdateConfigs;
-
-            EliteDuration = serverConfig.Bind("Server config", "EliteDuration", 15f,
-                new ConfigDescription("Server side float controlling the 1+ Star slain Buff Duration, Time in Seconds",
-                    new AcceptableValueRange<float>(5f, 600f), isAdminOnly));
-            EliteDuration.SettingChanged += UpdateConfigs;
-
-            MinibossDuration = serverConfig.Bind("Server config", "MinibossDuration", 300f,
-                new ConfigDescription("Server side float controlling the slain Powerful Creature Buff Duration, Time in Seconds",
-                    new AcceptableValueRange<float>(5f, 600f), isAdminOnly));
-            MinibossDuration.SettingChanged += UpdateConfigs;
-
-            /*AbominationDuration = serverConfig.Bind("Server config", "AbominationDuration", 300f,
-                new ConfigDescription("Server side float controlling the slain abomination Buff Duration, Time in Seconds",
-                    new AcceptableValueRange<float>(5f, 600f), isAdminOnly));
-            AbominationDuration.SettingChanged += UpdateConfigs;*/
-
-            //Buff tweaks section
-
-            /*VanirTrollStaminaCostReduction = serverConfig.Bind("Buff tweaks", "VanirTrollStaminaCostReduction", .5f,
-                new ConfigDescription("Server side float, flat value for stamina cost reduction during troll slain buff", new AcceptableValueRange<float>(0.01f, 20f), isAdminOnly));
-            VanirTrollStaminaCostReduction.SettingChanged += UpdateConfigs;
-            */
-            VanirEliteStaminaRegen = serverConfig.Bind("Buff tweaks", "VanirEliteStaminaRegen", 1.5f,
-                new ConfigDescription("Server side float, multiplier for stamina regen during elite slain buff **Requires Restart**", new AcceptableValueRange<float>(1f, 5f), isAdminOnly));
-            VanirEliteStaminaRegen.SettingChanged += UpdateConfigs;
-
-            VanirEliteHealthRegen = serverConfig.Bind("Buff tweaks", "VanirEliteHealthRegen", 50f,
-                new ConfigDescription("Server side float, multiplier for health regen during elite slain buff **Requires Restart**", new AcceptableValueRange<float>(1f, 500f), isAdminOnly));
-            VanirEliteHealthRegen.SettingChanged += UpdateConfigs;
-
-            VanirWeightBuffAmount = serverConfig.Bind("Buff tweaks", "VanirWeightBuffAmount", 60f,
-                new ConfigDescription("Server side float, multiplier for health regen during elite slain buff **Requires Restart**", new AcceptableValueRange<float>(10f, 500f), isAdminOnly));
-            VanirWeightBuffAmount.SettingChanged += UpdateConfigs;
-
-            /*
-            VanirAbominationDamageReduce = serverConfig.Bind("Buff tweaks", "VanirAbominationDamageReduce", 0.5f,
-                new ConfigDescription("Server side float, multiplier for damage reduction during abomination slain buff", new AcceptableValueRange<float>(0.01f, 1f), isAdminOnly));
-            VanirAbominationDamageReduce.SettingChanged += UpdateConfigs;
-            */
-        }
-        /*private void AddAbominationVanirBuff()
-        {
-            float readAbominationValue = AbominationDuration.Value;
+            float readAbominationValue = BaseConfig.AbominationDuration.Value;
             SE_Stats VanirBlessedAbomination = ScriptableObject.CreateInstance<SE_Stats>();
             VanirBlessedAbomination.name = "VanirAbomination";
             VanirBlessedAbomination.m_name = "$abominationvanir_effectname";
@@ -253,28 +191,52 @@ namespace BlessingsVanir
             VanirBlessedAbomination.m_icon = iconEliteBuff;
             VanirBlessedAbomination.m_ttl = readAbominationValue;
 
-            VanirBlessedAbomination.m_addMaxCarryWeight = 30f;
+            VanirBlessedAbomination.m_addMaxCarryWeight = BaseConfig.VanirWeightBuffAmount.Value;
 
             VanirAbominationBlessing = new CustomStatusEffect(VanirBlessedAbomination, fixReference: false);
             ItemManager.Instance.AddStatusEffect(VanirAbominationBlessing);
         }
-        private static IEnumerator<object> VanirAbominationBlessingSpecial()
+        private void AddGolemVanirBuff()
         {
-            foreach (Player player in Player.s_players)
-            {
-                while (player.GetSEMan().HaveStatusEffect(VanirAbominationBlessing.GetHashCode()))
-                {
-                    if (player.GetSEMan().HaveStatusEffect(Player.s_statusEffectWet))
-                    {
-                        player.GetSEMan().RemoveStatusEffect(Player.s_statusEffectWet, quiet: true);
-                    }
-                }
-            }
-            return null;
-        }*/
+            float readGolemValue = BaseConfig.GolemDuration.Value;
+            SE_Stats VanirBlessedGolem = ScriptableObject.CreateInstance<SE_Stats>();
+            VanirBlessedGolem.name = "VanirAbomination";
+            VanirBlessedGolem.m_name = "$abominationvanir_effectname";
+            VanirBlessedGolem.m_startMessage = "$abominationvanir_effectstart";
+            VanirBlessedGolem.m_tooltip = "$abominationvanir_desc";
+            //VanirBlessedAbomination.m_stopMessage = "$elitevanir_effectstop";
+            VanirBlessedGolem.m_startMessageType = MessageHud.MessageType.Center;
+            //VanirBlessedAbomination.m_stopMessageType = MessageHud.MessageType.Center;
+            VanirBlessedGolem.m_icon = iconEliteBuff;
+            VanirBlessedGolem.m_ttl = readGolemValue;
+
+            VanirBlessedGolem.m_addMaxCarryWeight = BaseConfig.VanirWeightBuffAmount.Value;
+
+            VanirGolemBlessing = new CustomStatusEffect(VanirBlessedGolem, fixReference: false);
+            ItemManager.Instance.AddStatusEffect(VanirGolemBlessing);
+        }
+        private void AddTrollVanirBuff()
+        {
+            float readTrollValue = BaseConfig.TrollDuration.Value;
+            SE_Stats VanirBlessedTroll = ScriptableObject.CreateInstance<SE_Stats>();
+            VanirBlessedTroll.name = "VanirAbomination";
+            VanirBlessedTroll.m_name = "$abominationvanir_effectname";
+            VanirBlessedTroll.m_startMessage = "$abominationvanir_effectstart";
+            VanirBlessedTroll.m_tooltip = "$abominationvanir_desc";
+            //VanirBlessedAbomination.m_stopMessage = "$elitevanir_effectstop";
+            VanirBlessedTroll.m_startMessageType = MessageHud.MessageType.Center;
+            //VanirBlessedAbomination.m_stopMessageType = MessageHud.MessageType.Center;
+            VanirBlessedTroll.m_icon = iconEliteBuff;
+            VanirBlessedTroll.m_ttl = readTrollValue;
+
+            VanirBlessedTroll.m_addMaxCarryWeight = BaseConfig.VanirWeightBuffAmount.Value;
+
+            VanirTrollBlessing = new CustomStatusEffect(VanirBlessedTroll, fixReference: false);
+            ItemManager.Instance.AddStatusEffect(VanirTrollBlessing);
+        }
         private void AddMinibossVanirBuff()
         {
-            float readMinibossValue = MinibossDuration.Value;
+            float readMinibossValue = BaseConfig.MinibossDuration.Value;
             SE_Stats VanirBlessedMiniboss = ScriptableObject.CreateInstance<SE_Stats>();
             VanirBlessedMiniboss.name = "VanirMiniboss";
             VanirBlessedMiniboss.m_name = "$minibossvanir_effectname";
@@ -287,14 +249,14 @@ namespace BlessingsVanir
             VanirBlessedMiniboss.m_icon = iconEliteBuff;
             VanirBlessedMiniboss.m_ttl = readMinibossValue;
             
-            VanirBlessedMiniboss.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
+            VanirBlessedMiniboss.m_addMaxCarryWeight = BaseConfig.VanirWeightBuffAmount.Value;
 
             VanirMinibossBlessing = new CustomStatusEffect(VanirBlessedMiniboss, fixReference: false);
             ItemManager.Instance.AddStatusEffect(VanirMinibossBlessing);
         }
         private void AddEliteVanirBuff()
         {
-            float readEliteValue = EliteDuration.Value;
+            float readEliteValue = BaseConfig.EliteDuration.Value;
             SE_Stats VanirBlessedElite = ScriptableObject.CreateInstance<SE_Stats>();
             VanirBlessedElite.name = "VanirElite";
             VanirBlessedElite.m_name = "$elitevanir_effectname";
@@ -306,8 +268,8 @@ namespace BlessingsVanir
             VanirBlessedElite.m_icon = iconEliteBuff;
             VanirBlessedElite.m_ttl = readEliteValue;
 
-            VanirBlessedElite.m_staminaRegenMultiplier = VanirEliteStaminaRegen.Value;
-            VanirBlessedElite.m_healthOverTime = VanirEliteHealthRegen.Value;
+            VanirBlessedElite.m_staminaRegenMultiplier = BaseConfig.VanirEliteStaminaRegen.Value;
+            VanirBlessedElite.m_healthOverTime = BaseConfig.VanirEliteHealthRegen.Value;
             VanirBlessedElite.m_healthOverTimeDuration = readEliteValue;
             VanirBlessedElite.m_healthOverTimeInterval = 1f;
             VanirBlessedElite.m_healthOverTimeTickHP = 1f;
@@ -320,7 +282,7 @@ namespace BlessingsVanir
         {
 
             // add effect
-            float readElderValue = ElderDuration.Value;
+            float readElderValue = BaseConfig.ElderDuration.Value;
             SE_Stats VanirBlessedElder = ScriptableObject.CreateInstance<SE_Stats>();
             VanirBlessedElder.name = "VanirElder";
             VanirBlessedElder.m_name = "$eldervanir_effectname";
@@ -332,7 +294,7 @@ namespace BlessingsVanir
             VanirBlessedElder.m_ttl = readElderValue;
             VanirBlessedElder.m_tooltip = "$eldervanir_desc";
 
-            VanirBlessedElder.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
+            VanirBlessedElder.m_addMaxCarryWeight = BaseConfig.VanirWeightBuffAmount.Value;
 
 
             VanirElderBlessing = new CustomStatusEffect(VanirBlessedElder, fixReference: false);  // We dont need to fix refs here, because no mocks were used
@@ -348,7 +310,7 @@ namespace BlessingsVanir
 
         private void AddBonemassVanirBuff()
         {
-            float readBonemassValue = BonemassDuration.Value;
+            float readBonemassValue = BaseConfig.BonemassDuration.Value;
             // add effect
             SE_Stats VanirBlessedBonemass = ScriptableObject.CreateInstance<SE_Stats>();
             VanirBlessedBonemass.name = "VanirBonemass";
@@ -361,7 +323,7 @@ namespace BlessingsVanir
             VanirBlessedBonemass.m_icon = iconBuff;
             VanirBlessedBonemass.m_ttl = readBonemassValue;
 
-            VanirBlessedBonemass.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
+            VanirBlessedBonemass.m_addMaxCarryWeight = BaseConfig.VanirWeightBuffAmount.Value;
 
 
             VanirBonemassBlessing = new CustomStatusEffect(VanirBlessedBonemass, fixReference: false);  // We dont need to fix refs here, because no mocks were used
@@ -373,7 +335,7 @@ namespace BlessingsVanir
 
         private void AddModerVanirBuff()
         {
-            float readModerValue = ModerDuration.Value;
+            float readModerValue = BaseConfig.ModerDuration.Value;
             // add effect
             SE_Stats VanirBlessedModer = ScriptableObject.CreateInstance<SE_Stats>();
             VanirBlessedModer.name = "VanirModer";
@@ -386,7 +348,7 @@ namespace BlessingsVanir
             VanirBlessedModer.m_icon = iconBuff;
             VanirBlessedModer.m_ttl = readModerValue;
 
-            VanirBlessedModer.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
+            VanirBlessedModer.m_addMaxCarryWeight = BaseConfig.VanirWeightBuffAmount.Value;
 
             VanirModerBlessing = new CustomStatusEffect(VanirBlessedModer, fixReference: false);  // We dont need to fix refs here, because no mocks were used
             ItemManager.Instance.AddStatusEffect(VanirModerBlessing);
@@ -397,7 +359,7 @@ namespace BlessingsVanir
 
         private void AddYagluthVanirBuff()
         {
-            float readYagluthValue = YagluthDuration.Value;
+            float readYagluthValue = BaseConfig.YagluthDuration.Value;
             // add effect
             SE_Stats VanirBlessedYagluth = ScriptableObject.CreateInstance<SE_Stats>();
             VanirBlessedYagluth.name = "VanirYagluth";
@@ -410,7 +372,7 @@ namespace BlessingsVanir
             VanirBlessedYagluth.m_icon = iconBuff;
             VanirBlessedYagluth.m_ttl = readYagluthValue;
 
-            VanirBlessedYagluth.m_addMaxCarryWeight = VanirWeightBuffAmount.Value;
+            VanirBlessedYagluth.m_addMaxCarryWeight = BaseConfig.VanirWeightBuffAmount.Value;
 
             VanirYagluthBlessing = new CustomStatusEffect(VanirBlessedYagluth, fixReference: false);  // We dont need to fix refs here, because no mocks were used
             ItemManager.Instance.AddStatusEffect(VanirYagluthBlessing);
@@ -418,7 +380,7 @@ namespace BlessingsVanir
             yagluthBlessedTeleportable.Add("$item_blackmetal");
             yagluthBlessedTeleportable.Add("$item_blackmetalscrap");
         }
-        private static IEnumerator<WaitForSeconds> DelayedStatusEffect(string str)
+        public static IEnumerator<WaitForSeconds> DelayedStatusEffect(string str)
         {
             yield return new WaitForSeconds(3f);
             foreach(Player player in Player.s_players)
@@ -456,13 +418,18 @@ namespace BlessingsVanir
                     }
                     player.GetSEMan().AddStatusEffect(VanirMinibossBlessing.GetHashCode());
                 }
-                /*
+                if (str.Equals("troll"))
+                {
+                    player.GetSEMan().AddStatusEffect(VanirTrollBlessing.GetHashCode());
+                }
                 if (str.Equals("abomination"))
                 {
                     player.GetSEMan().AddStatusEffect(VanirAbominationBlessing.GetHashCode());
-                    instance.StartCoroutine(VanirAbominationBlessingSpecial());
                 }
-                */
+                if (str.Equals("golem"))
+                {
+                    player.GetSEMan().AddStatusEffect(VanirGolemBlessing.GetHashCode());
+                }
             }
         }
         public static void SyncTeleportability(string effectName, List<string> toTeleport)
@@ -487,141 +454,8 @@ namespace BlessingsVanir
             }
 
         }
-        /*
-        [HarmonyPatch(typeof(Player), nameof(Player.ApplyArmorDamageMods))]
-        public static class DamageResistMod
-        {
-            private static Player player = Player.m_localPlayer;
-            public static void Postfix(Player __instance, ref HitData.DamageModifiers mods)
-            {
-                var damageMods = new List<HitData.DamageModPair>();
-                if (__instance.GetSEMan().HaveStatusEffect(VanirAbominationBlessing.StatusEffect.name))
-                {
-                    damageMods.Add(new HitData.DamageModPair() { m_type = HitData.DamageType.Pierce, m_modifier = HitData.DamageModifier.Resistant });
-                    damageMods.Add(new HitData.DamageModPair() { m_type = HitData.DamageType.Slash, m_modifier = HitData.DamageModifier.Resistant });
-                    damageMods.Add(new HitData.DamageModPair() { m_type = HitData.DamageType.Blunt, m_modifier = HitData.DamageModifier.Resistant });
-                    damageMods.Add(new HitData.DamageModPair() { m_type = HitData.DamageType.Chop, m_modifier = HitData.DamageModifier.Resistant });
-                }
 
-                mods.Apply(damageMods);
-            }
-        }
-        [HarmonyPatch(typeof(Character), nameof(Character.RPC_Damage))]
-        public static class ModifyDamageTaken
-        {
-            public static void Prefix(Character __instance, HitData hit)
-            {
-                if (!(__instance is Player player))
-                {
-                    return;
-                }
-
-                hit.m_damage.m_pierce *= VanirAbominationDamageReduce.Value;
-                hit.m_damage.m_slash *= VanirAbominationDamageReduce.Value;
-                hit.m_damage.m_blunt *= VanirAbominationDamageReduce.Value;
-                hit.m_damage.m_chop *= VanirAbominationDamageReduce.Value;
-
-
-            }
-        }
-        */
-        [HarmonyPatch(typeof(Character), nameof(Character.OnDeath))]
-
-        public static class CharacterDeathPatch
-        {
-
-            public static void Prefix(ref Humanoid __instance)
-            {
-               /*if (__instance.m_name.Equals("$enemy_troll"))
-                {
-                    trollDied = true;
-                }
-                else
-                {
-                    trollDied = false;
-                }*/
-            }
-
-            public static void Postfix(ref Character __instance)
-            {
-                if (__instance.m_name.Equals("$enemy_gdking"))
-                {
-                    instance.StartCoroutine(DelayedStatusEffect("elder"));
-                }
-                if (__instance.m_name.Equals("$enemy_bonemass"))
-                {
-                    instance.StartCoroutine(DelayedStatusEffect("bonemass"));
-                }
-                if (__instance.m_name.Equals("$enemy_dragon"))
-                {
-                    instance.StartCoroutine(DelayedStatusEffect("moder"));
-                }
-                if (__instance.m_name.Equals("$enemy_goblinking"))
-                {
-                    instance.StartCoroutine(DelayedStatusEffect("yagluth"));
-                }
-                if (__instance.m_level == 2 && __instance.m_tamed.Equals(false) && UnityEngine.Random.Range(1, 7).Equals(6) || __instance.m_level == 3 && __instance.m_tamed.Equals(false))
-                {
-                    instance.StartCoroutine(DelayedStatusEffect("elite"));
-                }
-                if (powerfulCreatures.Contains(__instance.m_name))
-                {
-                    instance.StartCoroutine(DelayedStatusEffect("miniboss"));
-                }
-                /*if (__instance.m_name.Equals("$enemy_abomination"))
-                {
-                    instance.StartCoroutine(DelayedStatusEffect("abomination"));
-                }*/
-            }
-        }
-
-        [HarmonyPatch(typeof(Player), nameof(Player.UpdateTeleport))]
-        public static class Teleport
-        {
-            public static void Prefix()
-            {
-                if (Player.m_localPlayer.GetSEMan().HaveStatusEffect(VanirElderBlessing.StatusEffect.name)) 
-                {
-                    BlessingsVanir.SyncTeleportability("VanirElder", BlessingsVanir.elderBlessedTeleportable);
-                    //Jotunn.Logger.LogInfo("The Vanir have seen the death of The Elder");
-                }
-                else
-                {
-                    BlessingsVanir.ResetTeleportability("VanirElder", BlessingsVanir.elderBlessedTeleportable);
-                }
-                if (Player.m_localPlayer.GetSEMan().HaveStatusEffect(VanirBonemassBlessing.StatusEffect.name))  
-                {
-                    BlessingsVanir.SyncTeleportability("VanirBonemass", BlessingsVanir.bonemassBlessedTeleportable);
-                    //Jotunn.Logger.LogInfo("The Vanir have seen the death of Bonemass");
-                }
-                else
-                {
-                    BlessingsVanir.ResetTeleportability("VanirBonemass", BlessingsVanir.bonemassBlessedTeleportable);
-                }
-                if (Player.m_localPlayer.GetSEMan().HaveStatusEffect(VanirModerBlessing.StatusEffect.name))
-                { 
-                    BlessingsVanir.SyncTeleportability("VanirModer", BlessingsVanir.moderBlessedTeleportable);
-                    //Jotunn.Logger.LogInfo("The Vanir have seen the death of Moder");
-                }
-                else
-                {
-                    BlessingsVanir.ResetTeleportability("VanirModer", BlessingsVanir.moderBlessedTeleportable);
-                }
-                if (Player.m_localPlayer.GetSEMan().HaveStatusEffect(VanirYagluthBlessing.StatusEffect.name))
-                {
-                    BlessingsVanir.SyncTeleportability("VanirYagluth", BlessingsVanir.yagluthBlessedTeleportable);
-                    //Jotunn.Logger.LogInfo("The Vanir have seen the death of Yagluth");
-                }
-                else
-                {
-                    BlessingsVanir.ResetTeleportability("VanirYagluth", BlessingsVanir.yagluthBlessedTeleportable);
-                }
-            }
-            public static void Postfix()
-            {
-
-            }
-        }
+ 
     }
 }
 
