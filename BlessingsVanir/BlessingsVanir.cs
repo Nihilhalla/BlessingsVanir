@@ -78,7 +78,12 @@ namespace BlessingsVanir
             }
             return null;
         }
-
+        public interface IEpicLootIntegration
+        {
+            // Define methods or properties you want to use
+            void HasActiveMagicEffect();
+            Type MagicEffectType();
+        }
         private void Awake()
         {
 
@@ -100,7 +105,7 @@ namespace BlessingsVanir
                 Jotunn.Logger.LogInfo("Epic Loot was found, adding reflective patches for status effects.");
                 ConfigSetup();
                 AddStatusEffects();
-                harmony = Harmony.CreateAndPatchAll(new EpicLoot().GetType(), PluginGUID);
+                harmony = Harmony.CreateAndPatchAll(new HarmonyPatches.EpicLoot().GetType(), PluginGUID);
             }
             else
             {

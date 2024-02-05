@@ -1,80 +1,109 @@
 ﻿using System;
 using System.Reflection;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BlessingsVanir.ReflectiveHooks
 {
-    class ReflectiveHooksAccessor
+    public class ReflectionAccessor
     {
-        private object pluginInstance; // Replace with an instance of the plugin class
+        private readonly object targetInstance;
 
-        public ReflectiveHooksAccessor(object instance)
+        public ReflectionAccessor(object instance)
         {
-            pluginInstance = instance;
+            targetInstance = instance ?? throw new ArgumentNullException(nameof(instance));
         }
 
-        public object GetVariableValue(string variableName)
+        public object InvokeMethod(string methodName, params object[] parameters)
         {
-            Type pluginType = pluginInstance.GetType();
-            FieldInfo fieldInfo = pluginType.GetField(variableName, BindingFlags.NonPublic | BindingFlags.Instance);
-
-            if (fieldInfo != null)
-            {
-                return fieldInfo.GetValue(pluginInstance);
-            }
-            else
-            {
-                // Handle the case where the variable is not found
-                throw new InvalidOperationException($"Variable '{variableName}' not found in the plugin.");
-            }
-        }
-        public Type GetVariableType(string variableName)
-        {
-            Type pluginType = pluginInstance.GetType();
-            FieldInfo fieldInfo = pluginType.GetField(variableName, BindingFlags.NonPublic | BindingFlags.Instance);
-
-            if (fieldInfo != null)
-            {
-                return fieldInfo.FieldType;
-            }
-            else
-            {
-                // Handle the case where the variable is not found
-                throw new InvalidOperationException($"Variable '{variableName}' not found in the plugin.");
-            }
-        }
-        public MethodInfo GetMethod(string methodName)
-        {
-            Type pluginType = pluginInstance.GetType();
-            MethodInfo methodInfo = pluginType.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Instance);
+            Type targetType = targetInstance.GetType();
+            MethodInfo methodInfo = targetType.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
 
             if (methodInfo != null)
             {
-                return methodInfo;
+                return methodInfo.Invoke(targetInstance, parameters);
             }
             else
             {
-                // Handle the case where the method is not found
-                throw new InvalidOperationException($"Method '{methodName}' not found in the plugin.");
+                throw new InvalidOperationException($"Method '{methodName}' not found in the target type.");
             }
         }
-        public object InvokeMethodWithParameters(string methodName, params object[] parameters)
-        {
-            MethodInfo methodInfo = GetMethod(methodName);
 
-            if (methodInfo != null)
+        public object GetFieldOrPropertyValue(string fieldName)
+        {
+            Type targetType = targetInstance.GetType();
+
+            FieldInfo fieldInfo = targetType.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            if (fieldInfo != null)
             {
-                object result = methodInfo.Invoke(pluginInstance, parameters);
-                return result;
+                return fieldInfo.GetValue(targetInstance);
+            }
+
+            PropertyInfo propertyInfo = targetType.GetProperty(fieldName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            if (propertyInfo != null)
+            {
+                return propertyInfo.GetValue(targetInstance);
+            }
+
+            throw new InvalidOperationException($"Field or property '{fieldName}' not found in the target type.");
+        }
+        public object GetFieldOrPropertyValue(object instance, string fieldNameOrPropertyName)
+        {
+            Type type = instance.GetType();
+            PropertyInfo propertyInfo = type.GetProperty(fieldNameOrPropertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+            if (propertyInfo != null)
+            {
+                return propertyInfo.GetValue(instance);
             }
             else
             {
-                // Handle the case where the method is not found
-                throw new InvalidOperationException($"Method '{methodName}' not found in the plugin.");
+                FieldInfo fieldInfo = type.GetField(fieldNameOrPropertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+                if (fieldInfo != null)
+                {
+                    return fieldInfo.GetValue(instance);
+                }
+                else
+                {
+                    // If neither property nor field is found, try to find a method with the given name
+                    MethodInfo methodInfo = type.GetMethod(fieldNameOrPropertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+                    if (methodInfo != null)
+                    {
+                        // If it's a method, invoke it (you might want to handle methods differently based on your requirements)
+                        return methodInfo.Invoke(instance, null);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Field, property, or method '{fieldNameOrPropertyName}' not found in the object.");
+                    }
+                }
             }
+        }
+
+
+        public object GetNestedFieldOrPropertyValue(string nestedTypeName, string fieldName)
+        {
+            Type targetType = targetInstance.GetType();
+            Type nestedType = targetType.GetNestedType(nestedTypeName, BindingFlags.NonPublic | BindingFlags.Public);
+
+            if (nestedType != null)
+            {
+                FieldInfo fieldInfo = nestedType.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                if (fieldInfo != null)
+                {
+                    return fieldInfo.GetValue(targetInstance);
+                }
+
+                PropertyInfo propertyInfo = nestedType.GetProperty(fieldName, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                if (propertyInfo != null)
+                {
+                    return propertyInfo.GetValue(targetInstance);
+                }
+
+                throw new InvalidOperationException($"Field or property '{fieldName}' not found in the nested type '{nestedTypeName}'.");
+            }
+
+            throw new InvalidOperationException($"Nested type '{nestedTypeName}' not found in the target type.");
         }
     }
 }
